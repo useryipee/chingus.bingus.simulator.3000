@@ -49,7 +49,7 @@
 <div id="game">
     <div id="counter">0</div>
     <canvas id="trail"></canvas>
-    <img id="bingus" src="bingus.png">
+    <img id="bingus" src="bingus.jpg">
 </div>
 
 <script>
@@ -73,7 +73,6 @@ let score = 0;
 let trail = [];
 let obstacles = [];
 
-// Input
 document.addEventListener("mousedown", () => clicking = true);
 document.addEventListener("mouseup", () => clicking = false);
 
@@ -85,7 +84,6 @@ document.addEventListener("keyup", (e) => {
     if (e.code === "Space") clicking = false;
 });
 
-// Spawn obstacles forever
 function spawnObstacle() {
     let height = Math.random() * 200 + 50;
     let gapY = Math.random() * (window.innerHeight - 200);
@@ -100,10 +98,8 @@ function spawnObstacle() {
 
 setInterval(spawnObstacle, 1200);
 
-// Game loop
 function update() {
 
-    // Movement
     if (clicking) {
         velocity += lift;
     } else {
@@ -112,13 +108,11 @@ function update() {
 
     y += velocity;
 
-    // Bounds (no death = infinite)
     if (y < 0) y = 0;
     if (y > window.innerHeight - 60) y = window.innerHeight - 60;
 
     bingus.style.top = y + "px";
 
-    // Trail
     trail.push({x: 120, y: y + 30});
     if (trail.length > 100) trail.shift();
 
@@ -134,15 +128,12 @@ function update() {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Obstacles
     obstacles.forEach((obs, index) => {
         obs.x -= 5;
 
-        // Top block
         ctx.fillStyle = "red";
         ctx.fillRect(obs.x, 0, obs.width, obs.gapY);
 
-        // Bottom block
         ctx.fillRect(
             obs.x,
             obs.gapY + obs.height,
@@ -150,7 +141,6 @@ function update() {
             canvas.height
         );
 
-        // Collision (optional, but still no game over)
         let bx = 120;
         let by = y;
         let size = 60;
@@ -160,18 +150,16 @@ function update() {
             bx + size > obs.x &&
             (by < obs.gapY || by + size > obs.gapY + obs.height)
         ) {
-            // Just reset position for fun (no death screen)
+
             y = window.innerHeight / 2;
             velocity = 0;
         }
 
-        // Remove off-screen
         if (obs.x < -50) {
             obstacles.splice(index, 1);
         }
     });
 
-    // Counter
     score += 1;
     counterEl.textContent = score;
 
