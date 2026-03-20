@@ -12,10 +12,11 @@
         font-family: Arial, sans-serif;
     }
 
-    #game {
-        position: relative;
-        width: 100vw;
-        height: 100vh;
+    #counter {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        font-size: 24px;
     }
 
     #bingus {
@@ -24,33 +25,18 @@
         left: 120px;
     }
 
-    #counter {
-        position: absolute;
-        top: 20px;
-        left: 20px;
-        font-size: 24px;
-    }
-
     canvas {
         position: absolute;
         top: 0;
         left: 0;
     }
-
-    .obstacle {
-        position: absolute;
-        width: 40px;
-        background: red;
-    }
 </style>
 </head>
 <body>
 
-<div id="game">
-    <div id="counter">0</div>
-    <canvas id="trail"></canvas>
-    <img id="bingus" src="bingus.jpg">
-</div>
+<div id="counter">0</div>
+<canvas id="trail"></canvas>
+<img id="bingus" src="bingus.png">
 
 <script>
 const bingus = document.getElementById("bingus");
@@ -64,14 +50,15 @@ canvas.height = window.innerHeight;
 let y = window.innerHeight / 2;
 let velocity = 0;
 
-let gravity = 0.5;
-let lift = -1.2;
+let gravity = 0.4;
+let lift = -0.8;
 
 let clicking = false;
 let score = 0;
 
 let trail = [];
 let obstacles = [];
+let speed = 3;
 
 document.addEventListener("mousedown", () => clicking = true);
 document.addEventListener("mouseup", () => clicking = false);
@@ -79,24 +66,31 @@ document.addEventListener("mouseup", () => clicking = false);
 document.addEventListener("keydown", (e) => {
     if (e.code === "Space") clicking = true;
 });
-
 document.addEventListener("keyup", (e) => {
     if (e.code === "Space") clicking = false;
 });
 
 function spawnObstacle() {
-    let height = Math.random() * 200 + 50;
-    let gapY = Math.random() * (window.innerHeight - 200);
+    let gapSize = 220; 
+    let gapY = Math.random() * (window.innerHeight - gapSize);
 
     obstacles.push({
         x: window.innerWidth,
         gapY: gapY,
-        height: height,
-        width: 40
+        gapSize: gapSize,
+        width: 50
     });
 }
 
-setInterval(spawnObstacle, 1200);
+setInterval(spawnObstacle, 1600);
+
+function resetGame() {
+    y = window.innerHeight / 2;
+    velocity = 0;
+    obstacles = [];
+    trail = [];
+    score = 0;
+}
 
 function update() {
 
@@ -106,21 +100,26 @@ function update() {
         velocity += gravity;
     }
 
+    velocity = Math.max(Math.min(velocity, 8), -8);
+
     y += velocity;
 
-    if (y < 0) y = 0;
-    if (y > window.innerHeight - 60) y = window.innerHeight - 60;
+    if (y <= 0 || y >= window.innerHeight - 60) {
+        resetGame();
+    }
 
     bingus.style.top = y + "px";
 
     trail.push({x: 120, y: y + 30});
-    if (trail.length > 100) trail.shift();
+    if (trail.length > 120) trail.shift();
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.beginPath();
     for (let i = 0; i < trail.length; i++) {
         let p = trail[i];
+        p.x -= speed; 
+
         if (i === 0) ctx.moveTo(p.x, p.y);
         else ctx.lineTo(p.x, p.y);
     }
@@ -129,17 +128,15 @@ function update() {
     ctx.stroke();
 
     obstacles.forEach((obs, index) => {
-        obs.x -= 5;
+        obs.x -= speed;
 
-        ctx.fillStyle = "red";
         ctx.fillRect(obs.x, 0, obs.width, obs.gapY);
 
         ctx.fillRect(
             obs.x,
-            obs.gapY + obs.height,
+            obs.gapY + obs.gapSize,
             obs.width,
             canvas.height
-        );
 
         let bx = 120;
         let by = y;
@@ -148,17 +145,16 @@ function update() {
         if (
             bx < obs.x + obs.width &&
             bx + size > obs.x &&
-            (by < obs.gapY || by + size > obs.gapY + obs.height)
+            (by < obs.gapY || by + size > obs.gapY + obs.gapSize)
         ) {
-
-            y = window.innerHeight / 2;
-            velocity = 0;
+            resetGame();
         }
 
-        if (obs.x < -50) {
+        if (obs.x < -60) {
             obstacles.splice(index, 1);
         }
     });
+
 
     score += 1;
     counterEl.textContent = score;
