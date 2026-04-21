@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Chingus Bingus Simulator 3000</title>
+
 <style>
 body {
     margin: 0;
@@ -11,6 +12,7 @@ body {
     font-family: Arial, sans-serif;
 }
 
+/* MENU */
 #menu {
     position: absolute;
     width: 100%;
@@ -20,6 +22,7 @@ body {
     align-items: center;
     justify-content: center;
     color: white;
+    z-index: 10;
 }
 
 button {
@@ -28,6 +31,7 @@ button {
     cursor: pointer;
 }
 
+/* GAME UI */
 #gameUI {
     position: absolute;
     top: 20px;
@@ -35,6 +39,7 @@ button {
     color: white;
     font-size: 24px;
     display: none;
+    z-index: 5;
 }
 
 canvas {
@@ -44,11 +49,12 @@ canvas {
 }
 </style>
 </head>
+
 <body>
 
 <div id="menu">
     <h1>CHINGUS BINGUS SIMULATOR 3000</h1>
-    <button onclick="startGame()">Play</button>
+    <button id="playBtn">Play</button>
 </div>
 
 <div id="gameUI">0</div>
@@ -57,6 +63,7 @@ canvas {
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
@@ -76,6 +83,7 @@ let jump = -12;
 let clicking = false;
 let score = 0;
 
+/* LEVEL */
 let level = [
     {type: "spike", x: 600, y: canvas.height - 40},
     {type: "spike", x: 800, y: canvas.height - 40},
@@ -85,6 +93,9 @@ let level = [
     {type: "portal", x: 1600, mode: "cube"},
     {type: "spike", x: 1800, y: canvas.height - 40}
 ];
+
+/* BUTTON */
+document.getElementById("playBtn").addEventListener("click", startGame);
 
 function startGame() {
     document.getElementById("menu").style.display = "none";
@@ -101,7 +112,7 @@ function reset() {
     score = 0;
 }
 
-// Input
+/* INPUT */
 document.addEventListener("mousedown", () => clicking = true);
 document.addEventListener("mouseup", () => clicking = false);
 
@@ -112,11 +123,27 @@ document.addEventListener("keyup", e => {
     if (e.code === "Space") clicking = false;
 });
 
-// Draw Bingus
+/* IMAGE */
 let img = new Image();
 img.src = "bingus.jpg";
 
-// Game loop
+/* HITBOX */
+function collide(x, y, w, h) {
+    let radius = player.size * 0.4;
+
+    let cx = player.x + player.size / 2;
+    let cy = player.y + player.size / 2;
+
+    let closestX = Math.max(x, Math.min(cx, x + w));
+    let closestY = Math.max(y, Math.min(cy, y + h));
+
+    let dx = cx - closestX;
+    let dy = cy - closestY;
+
+    return (dx * dx + dy * dy) < (radius * radius);
+}
+
+/* LOOP */
 function update() {
     requestAnimationFrame(update);
 
@@ -124,13 +151,16 @@ function update() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Movement
+    /* MOVEMENT */
     if (player.mode === "cube") {
         player.velY += gravity;
+
         if (clicking && player.y >= canvas.height - player.size - 1) {
             player.velY = jump;
         }
-    } else if (player.mode === "ship") {
+    }
+
+    else if (player.mode === "ship") {
         if (clicking) player.velY -= 0.6;
         else player.velY += 0.6;
     }
@@ -141,19 +171,18 @@ function update() {
     if (player.y > canvas.height - player.size)
         player.y = canvas.height - player.size;
 
-    // Draw player
+    /* DRAW */
     ctx.drawImage(img, player.x, player.y, player.size, player.size);
 
-    // Move level
+    /* MOVE LEVEL */
     level.forEach(obj => obj.x -= 6);
 
-    // Draw & collisions
+    /* OBJECTS */
     level.forEach(obj => {
 
         if (obj.type === "spike") {
             ctx.fillStyle = "red";
             ctx.fillRect(obj.x, obj.y, 40, 40);
-
             if (collide(obj.x, obj.y, 40, 40)) reset();
         }
 
@@ -175,20 +204,10 @@ function update() {
                 player.mode = obj.mode;
             }
         }
-
     });
 
     score++;
     document.getElementById("gameUI").textContent = score;
-}
-
-function collide(x, y, w, h) {
-    return (
-        player.x < x + w &&
-        player.x + player.size > x &&
-        player.y < y + h &&
-        player.y + player.size > y
-    );
 }
 
 update();
