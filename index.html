@@ -5,48 +5,31 @@
 <title>Chingus Bingus Simulator 3000</title>
 
 <style>
-body {
-    margin: 0;
-    overflow: hidden;
-    background: black;
-    font-family: Arial, sans-serif;
-}
+body { margin:0; overflow:hidden; background:black; font-family:Arial; }
 
-/* MENU */
 #menu {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    z-index: 10;
+    position:absolute;
+    width:100%; height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    color:white;
+    z-index:10;
 }
 
-button {
-    padding: 15px 30px;
-    font-size: 20px;
-    cursor: pointer;
-}
+button { padding:15px 30px; font-size:20px; cursor:pointer; }
 
-/* GAME UI */
 #gameUI {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    color: white;
-    font-size: 24px;
-    display: none;
-    z-index: 5;
+    position:absolute;
+    top:20px;
+    left:20px;
+    color:white;
+    font-size:24px;
+    display:none;
 }
 
-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-}
+canvas { position:absolute; top:0; left:0; }
 </style>
 </head>
 
@@ -64,150 +47,214 @@ canvas {
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+canvas.width = innerWidth;
+canvas.height = innerHeight;
 
 let gameState = "menu";
+let clicking = false;
 
 let player = {
-    x: 150,
-    y: canvas.height / 2,
-    size: 60,
-    velY: 0,
-    mode: "cube"
+    x:150,
+    y:canvas.height-100,
+    size:50,
+    velY:0,
+    mode:"cube"
 };
 
-let gravity = 0.6;
-let jump = -12;
-
-let clicking = false;
+let gravity = 0.7;
+let jump = -13;
 let score = 0;
-
-/* LEVEL */
-let level = [
-    {type: "spike", x: 600, y: canvas.height - 40},
-    {type: "spike", x: 800, y: canvas.height - 40},
-    {type: "portal", x: 1000, mode: "ship"},
-    {type: "spikeTop", x: 1300, y: 0},
-    {type: "spikeBottom", x: 1300, y: canvas.height - 40},
-    {type: "portal", x: 1600, mode: "cube"},
-    {type: "spike", x: 1800, y: canvas.height - 40}
-];
-
-/* BUTTON */
-document.getElementById("playBtn").addEventListener("click", startGame);
-
-function startGame() {
-    document.getElementById("menu").style.display = "none";
-    document.getElementById("gameUI").style.display = "block";
-
-    gameState = "playing";
-    reset();
-}
-
-function reset() {
-    player.y = canvas.height / 2;
-    player.velY = 0;
-    player.mode = "cube";
-    score = 0;
-}
-
-/* INPUT */
-document.addEventListener("mousedown", () => clicking = true);
-document.addEventListener("mouseup", () => clicking = false);
-
-document.addEventListener("keydown", e => {
-    if (e.code === "Space") clicking = true;
-});
-document.addEventListener("keyup", e => {
-    if (e.code === "Space") clicking = false;
-});
 
 /* IMAGE */
 let img = new Image();
 img.src = "bingus.jpg";
 
-/* HITBOX */
-function collide(x, y, w, h) {
-    let radius = player.size * 0.4;
+/* LONG LEVEL (NO LOOP) */
+let level = [
+    // --- CUBE START ---
+    {type:"spike", x:600, y:canvas.height-50},
+    {type:"spike", x:700, y:canvas.height-50},
 
-    let cx = player.x + player.size / 2;
-    let cy = player.y + player.size / 2;
+    {type:"orb", x:850, y:canvas.height-180},
 
-    let closestX = Math.max(x, Math.min(cx, x + w));
-    let closestY = Math.max(y, Math.min(cy, y + h));
+    {type:"spike", x:950, y:canvas.height-50},
+    {type:"spike", x:1050, y:canvas.height-50},
 
-    let dx = cx - closestX;
-    let dy = cy - closestY;
+    // --- SHIP SECTION ---
+    {type:"portal", x:1200, mode:"ship"},
 
-    return (dx * dx + dy * dy) < (radius * radius);
+    {type:"spikeTop", x:1350, y:0},
+    {type:"spikeBottom", x:1350, y:canvas.height-50},
+
+    {type:"spikeTop", x:1450, y:0},
+    {type:"spikeBottom", x:1450, y:canvas.height-50},
+
+    {type:"orb", x:1600, y:canvas.height/2},
+
+    // --- WAVE SECTION ---
+    {type:"portal", x:1750, mode:"wave"},
+
+    {type:"waveSpike", x:1900, y:canvas.height/2},
+    {type:"waveSpike", x:2000, y:canvas.height/2-100},
+    {type:"waveSpike", x:2100, y:canvas.height/2+100},
+
+    // --- FINAL CUBE ---
+    {type:"portal", x:2300, mode:"cube"},
+
+    {type:"spike", x:2450, y:canvas.height-50},
+    {type:"orb", x:2550, y:canvas.height-180},
+
+    {type:"spike", x:2650, y:canvas.height-50},
+    {type:"spike", x:2750, y:canvas.height-50},
+
+    // END
+    {type:"finish", x:2900, y:canvas.height/2}
+];
+
+/* INPUT */
+document.addEventListener("mousedown",()=>clicking=true);
+document.addEventListener("mouseup",()=>clicking=false);
+
+document.addEventListener("keydown",e=>{
+    if(e.code==="Space") clicking=true;
+});
+document.addEventListener("keyup",e=>{
+    if(e.code==="Space") clicking=false;
+});
+
+/* START */
+document.getElementById("playBtn").onclick=()=>{
+    document.getElementById("menu").style.display="none";
+    document.getElementById("gameUI").style.display="block";
+    gameState="playing";
+    reset();
+};
+
+function reset(){
+    player.y = canvas.height-100;
+    player.velY = 0;
+    player.mode = "cube";
+    score = 0;
 }
 
-/* LOOP */
-function update() {
-    requestAnimationFrame(update);
+/* EXPLOSION */
+function explode(x,y){
+    for(let i=0;i<25;i++){
+        ctx.fillStyle="orange";
+        ctx.fillRect(
+            x+Math.random()*80-40,
+            y+Math.random()*80-40,
+            5,5
+        );
+    }
+}
 
-    if (gameState !== "playing") return;
+/* HITBOX */
+function collide(x,y,w,h){
+    let r=player.size*0.4;
+    let cx=player.x+player.size/2;
+    let cy=player.y+player.size/2;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let closestX=Math.max(x,Math.min(cx,x+w));
+    let closestY=Math.max(y,Math.min(cy,y+h));
 
-    /* MOVEMENT */
-    if (player.mode === "cube") {
-        player.velY += gravity;
+    let dx=cx-closestX;
+    let dy=cy-closestY;
 
-        if (clicking && player.y >= canvas.height - player.size - 1) {
-            player.velY = jump;
+    return (dx*dx+dy*dy)<(r*r);
+}
+
+/* GAME LOOP */
+function update(){
+requestAnimationFrame(update);
+if(gameState!=="playing") return;
+
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+/* MOVEMENT */
+if(player.mode==="cube"){
+    player.velY+=gravity;
+
+    if(clicking && player.y>=canvas.height-player.size-1){
+        player.velY=jump;
+    }
+}
+else if(player.mode==="ship"){
+    if(clicking) player.velY-=0.6;
+    else player.velY+=0.6;
+}
+else if(player.mode==="wave"){
+    player.velY = clicking ? -8 : 8;
+}
+
+player.y+=player.velY;
+
+/* bounds */
+if(player.y<0) player.y=0;
+if(player.y>canvas.height-player.size)
+    player.y=canvas.height-player.size;
+
+/* draw player */
+ctx.drawImage(img,player.x,player.y,player.size,player.size);
+
+/* move level */
+level.forEach(o=>o.x-=6);
+
+/* draw objects */
+level.forEach(o=>{
+
+    if(o.type==="spike"){
+        ctx.fillStyle="red";
+        ctx.fillRect(o.x,o.y,40,40);
+        if(collide(o.x,o.y,40,40)){ explode(player.x,player.y); reset(); }
+    }
+
+    if(o.type==="spikeTop"||o.type==="spikeBottom"){
+        ctx.fillRect(o.x,o.y,40,40);
+        if(collide(o.x,o.y,40,40)){ explode(player.x,player.y); reset(); }
+    }
+
+    if(o.type==="orb"){
+        ctx.fillStyle="yellow";
+        ctx.beginPath();
+        ctx.arc(o.x,o.y,15,0,Math.PI*2);
+        ctx.fill();
+
+        if(collide(o.x-15,o.y-15,30,30) && clicking){
+            player.velY = -15;
         }
     }
 
-    else if (player.mode === "ship") {
-        if (clicking) player.velY -= 0.6;
-        else player.velY += 0.6;
+    if(o.type==="portal"){
+        ctx.fillStyle="cyan";
+        ctx.fillRect(o.x,canvas.height/2-60,20,120);
+
+        if(collide(o.x,canvas.height/2-60,20,120)){
+            player.mode=o.mode;
+        }
     }
 
-    player.y += player.velY;
+    if(o.type==="waveSpike"){
+        ctx.fillStyle="purple";
+        ctx.fillRect(o.x,o.y,40,40);
+        if(collide(o.x,o.y,40,40)){ explode(player.x,player.y); reset(); }
+    }
 
-    if (player.y < 0) player.y = 0;
-    if (player.y > canvas.height - player.size)
-        player.y = canvas.height - player.size;
+    if(o.type==="finish"){
+        ctx.fillStyle="lime";
+        ctx.fillRect(o.x,o.y,30,200);
 
-    /* DRAW */
-    ctx.drawImage(img, player.x, player.y, player.size, player.size);
-
-    /* MOVE LEVEL */
-    level.forEach(obj => obj.x -= 6);
-
-    /* OBJECTS */
-    level.forEach(obj => {
-
-        if (obj.type === "spike") {
-            ctx.fillStyle = "red";
-            ctx.fillRect(obj.x, obj.y, 40, 40);
-            if (collide(obj.x, obj.y, 40, 40)) reset();
+        if(collide(o.x,o.y,30,200)){
+            alert("LEVEL COMPLETE 🎉");
+            reset();
         }
+    }
+});
 
-        if (obj.type === "spikeTop") {
-            ctx.fillRect(obj.x, obj.y, 40, 40);
-            if (collide(obj.x, obj.y, 40, 40)) reset();
-        }
+/* SCORE */
+score++;
+document.getElementById("gameUI").textContent=score;
 
-        if (obj.type === "spikeBottom") {
-            ctx.fillRect(obj.x, obj.y, 40, 40);
-            if (collide(obj.x, obj.y, 40, 40)) reset();
-        }
-
-        if (obj.type === "portal") {
-            ctx.fillStyle = "cyan";
-            ctx.fillRect(obj.x, canvas.height/2 - 50, 20, 100);
-
-            if (collide(obj.x, canvas.height/2 - 50, 20, 100)) {
-                player.mode = obj.mode;
-            }
-        }
-    });
-
-    score++;
-    document.getElementById("gameUI").textContent = score;
 }
 
 update();
