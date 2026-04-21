@@ -2,180 +2,193 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Bingus Chingus Simulator 3000</title>
+<title>Bingus Dash 3000</title>
 <style>
-    body {
-        margin: 0;
-        overflow: hidden;
-        background: black;
-        color: white;
-        font-family: Arial, sans-serif;
-    }
+body {
+    margin: 0;
+    overflow: hidden;
+    background: black;
+    font-family: Arial, sans-serif;
+}
 
-    #game {
-        position: relative;
-        width: 100vw;
-        height: 100vh;
-    }
+#menu {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
 
-    #bingus {
-        position: absolute;
-        width: 60px;
-        left: 120px;
-    }
+button {
+    padding: 15px 30px;
+    font-size: 20px;
+    cursor: pointer;
+}
 
-    #counter {
-        position: absolute;
-        top: 20px;
-        left: 20px;
-        font-size: 24px;
-    }
+#gameUI {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: white;
+    font-size: 24px;
+    display: none;
+}
 
-    canvas {
-        position: absolute;
-        top: 0;
-        left: 0;
-    }
-
-    .obstacle {
-        position: absolute;
-        width: 40px;
-        background: red;
-    }
+canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
 </style>
 </head>
 <body>
 
-<div id="game">
-    <div id="counter">0</div>
-    <canvas id="trail"></canvas>
-    <img id="bingus" src="bingus.jpg">
+<div id="menu">
+    <h1>BINGUS DASH 3000</h1>
+    <button onclick="startGame()">Play</button>
 </div>
 
-<script>
-const bingus = document.getElementById("bingus");
-const counterEl = document.getElementById("counter");
-const canvas = document.getElementById("trail");
-const ctx = canvas.getContext("2d");
+<div id="gameUI">0</div>
+<canvas id="canvas"></canvas>
 
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-let y = window.innerHeight / 2;
-let velocity = 0;
+let gameState = "menu";
 
-let gravity = 0.5;
-let lift = -1.2;
+let player = {
+    x: 150,
+    y: canvas.height / 2,
+    size: 60,
+    velY: 0,
+    mode: "cube"
+};
+
+let gravity = 0.6;
+let jump = -12;
 
 let clicking = false;
 let score = 0;
 
-let trail = [];
-let obstacles = [];
+let level = [
+    {type: "spike", x: 600, y: canvas.height - 40},
+    {type: "spike", x: 800, y: canvas.height - 40},
+    {type: "portal", x: 1000, mode: "ship"},
+    {type: "spikeTop", x: 1300, y: 0},
+    {type: "spikeBottom", x: 1300, y: canvas.height - 40},
+    {type: "portal", x: 1600, mode: "cube"},
+    {type: "spike", x: 1800, y: canvas.height - 40}
+];
+
+function startGame() {
+    document.getElementById("menu").style.display = "none";
+    document.getElementById("gameUI").style.display = "block";
+
+    gameState = "playing";
+    reset();
+}
+
+function reset() {
+    player.y = canvas.height / 2;
+    player.velY = 0;
+    player.mode = "cube";
+    score = 0;
+}
 
 // Input
 document.addEventListener("mousedown", () => clicking = true);
 document.addEventListener("mouseup", () => clicking = false);
 
-document.addEventListener("keydown", (e) => {
+document.addEventListener("keydown", e => {
     if (e.code === "Space") clicking = true;
 });
-
-document.addEventListener("keyup", (e) => {
+document.addEventListener("keyup", e => {
     if (e.code === "Space") clicking = false;
 });
 
-// Spawn obstacles forever
-function spawnObstacle() {
-    let height = Math.random() * 200 + 50;
-    let gapY = Math.random() * (window.innerHeight - 200);
-
-    obstacles.push({
-        x: window.innerWidth,
-        gapY: gapY,
-        height: height,
-        width: 40
-    });
-}
-
-setInterval(spawnObstacle, 1200);
+// Draw Bingus
+let img = new Image();
+img.src = "bingus.jpg";
 
 // Game loop
 function update() {
+    requestAnimationFrame(update);
 
-    // Movement
-    if (clicking) {
-        velocity += lift;
-    } else {
-        velocity += gravity;
-    }
-
-    y += velocity;
-
-    // Bounds (no death = infinite)
-    if (y < 0) y = 0;
-    if (y > window.innerHeight - 60) y = window.innerHeight - 60;
-
-    bingus.style.top = y + "px";
-
-    // Trail
-    trail.push({x: 120, y: y + 30});
-    if (trail.length > 100) trail.shift();
+    if (gameState !== "playing") return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.beginPath();
-    for (let i = 0; i < trail.length; i++) {
-        let p = trail[i];
-        if (i === 0) ctx.moveTo(p.x, p.y);
-        else ctx.lineTo(p.x, p.y);
+    // Movement
+    if (player.mode === "cube") {
+        player.velY += gravity;
+        if (clicking && player.y >= canvas.height - player.size - 1) {
+            player.velY = jump;
+        }
+    } else if (player.mode === "ship") {
+        if (clicking) player.velY -= 0.6;
+        else player.velY += 0.6;
     }
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 2;
-    ctx.stroke();
 
-    // Obstacles
-    obstacles.forEach((obs, index) => {
-        obs.x -= 5;
+    player.y += player.velY;
 
-        // Top block
-        ctx.fillStyle = "red";
-        ctx.fillRect(obs.x, 0, obs.width, obs.gapY);
+    if (player.y < 0) player.y = 0;
+    if (player.y > canvas.height - player.size)
+        player.y = canvas.height - player.size;
 
-        // Bottom block
-        ctx.fillRect(
-            obs.x,
-            obs.gapY + obs.height,
-            obs.width,
-            canvas.height
-        );
+    // Draw player
+    ctx.drawImage(img, player.x, player.y, player.size, player.size);
 
-        // Collision (optional, but still no game over)
-        let bx = 120;
-        let by = y;
-        let size = 60;
+    // Move level
+    level.forEach(obj => obj.x -= 6);
 
-        if (
-            bx < obs.x + obs.width &&
-            bx + size > obs.x &&
-            (by < obs.gapY || by + size > obs.gapY + obs.height)
-        ) {
-            // Just reset position for fun (no death screen)
-            y = window.innerHeight / 2;
-            velocity = 0;
+    // Draw & collisions
+    level.forEach(obj => {
+
+        if (obj.type === "spike") {
+            ctx.fillStyle = "red";
+            ctx.fillRect(obj.x, obj.y, 40, 40);
+
+            if (collide(obj.x, obj.y, 40, 40)) reset();
         }
 
-        // Remove off-screen
-        if (obs.x < -50) {
-            obstacles.splice(index, 1);
+        if (obj.type === "spikeTop") {
+            ctx.fillRect(obj.x, obj.y, 40, 40);
+            if (collide(obj.x, obj.y, 40, 40)) reset();
         }
+
+        if (obj.type === "spikeBottom") {
+            ctx.fillRect(obj.x, obj.y, 40, 40);
+            if (collide(obj.x, obj.y, 40, 40)) reset();
+        }
+
+        if (obj.type === "portal") {
+            ctx.fillStyle = "cyan";
+            ctx.fillRect(obj.x, canvas.height/2 - 50, 20, 100);
+
+            if (collide(obj.x, canvas.height/2 - 50, 20, 100)) {
+                player.mode = obj.mode;
+            }
+        }
+
     });
 
-    // Counter
-    score += 1;
-    counterEl.textContent = score;
+    score++;
+    document.getElementById("gameUI").textContent = score;
+}
 
-    requestAnimationFrame(update);
+function collide(x, y, w, h) {
+    return (
+        player.x < x + w &&
+        player.x + player.size > x &&
+        player.y < y + h &&
+        player.y + player.size > y
+    );
 }
 
 update();
